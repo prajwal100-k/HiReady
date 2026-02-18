@@ -1,50 +1,220 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, MessageSquare, CheckCircle2, AlertTriangle, AlertCircle } from "lucide-react";
+import { ArrowLeft, MessageSquare, CheckCircle2, AlertTriangle, AlertCircle, Loader2, FileText } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend } from "recharts";
+import Groq from "groq-sdk";
+import { toast } from "sonner";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+
+interface ConversationEntry {
+  role: "interviewer" | "user";
+  text: string;
+  timestamp?: string;
+}
+
+interface AnalysisResult {
+  role: string;
+  confidenceScore: number;
+  contentScore: number;
+  overallScore: number;
+  strengths: string[];
+  improvements: string[];
+  rejectionReasons: string[];
+  performanceBreakdown: {
+    technicalSkills: number;
+    communication: number;
+    problemSolving: number;
+    confidence: number;
+  };
+  skillsAssessment: {
+    technical: number;
+    communication: number;
+    leadership: number;
+    problemSolving: number;
+    adaptability: number;
+    teamwork: number;
+  };
+}
 
 const InterviewReport = () => {
-  // Mock data for the report
-  const reportData = {
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [conversation, setConversation] = useState<ConversationEntry[]>([]);
+  const [reportData, setReportData] = useState<AnalysisResult>({
     role: "Front-end Developer",
-    confidenceScore: 78,
-    contentScore: 82,
-    overallScore: 80,
-    strengths: [
-      "The candidate understands the structure of interview questions.",
-      "The candidate is attempting to provide answers to technical questions.",
-      "The candidate shows some familiarity with the concepts of front-end development.",
-    ],
-    improvements: [
-      "The responses are nonsensical or incomplete, demonstrating a lack of preparedness.",
-      "There is a total lack of clarity and detail in answers.",
-      "The candidate does not appropriately engage with the questions asked.",
-    ],
-    rejectionReasons: [
-      "Inability to articulate thoughts clearly and meaningfully.",
-      "Lack of relevant technical knowledge and experience.",
-      "Failure to demonstrate critical thinking or problem-solving skills in responses.",
-    ],
+    confidenceScore: 0,
+    contentScore: 0,
+    overallScore: 0,
+    strengths: [],
+    improvements: [],
+    rejectionReasons: [],
+    performanceBreakdown: {
+      technicalSkills: 0,
+      communication: 0,
+      problemSolving: 0,
+      confidence: 0,
+    },
+    skillsAssessment: {
+      technical: 0,
+      communication: 0,
+      leadership: 0,
+      problemSolving: 0,
+      adaptability: 0,
+      teamwork: 0,
+    },
+  });
+
+  useEffect(() => {
+    loadAndAnalyzeInterview();
+  }, []);
+
+  const loadAndAnalyzeInterview = async () => {
+    // Load conversation from session storage
+    const savedConversation = sessionStorage.getItem("interviewConversation");
+    
+    if (!savedConversation) {
+      toast.error("No interview data found. Please complete an interview first.");
+      return;
+    }
+
+    try {
+      const conversationData: ConversationEntry[] = JSON.parse(savedConversation);
+      setConversation(conversationData);
+
+      // Analyze the interview using Groq
+      await analyzeInterviewWithLLM(conversationData);
+    } catch (error) {
+      console.error("Error loading interview data:", error);
+      toast.error("Failed to load interview data");
+    }
   };
 
-  // Chart data
+  const analyzeInterviewWithLLM = async (conversationData: ConversationEntry[]) => {
+    setIsAnalyzing(true);
+
+    try {
+      const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || "";
+      const groq = new Groq({ apiKey: GROQ_API_KEY, dangerouslyAllowBrowser: true });
+
+      // Format conversation for analysis
+      const transcript = conversationData
+        .map((entry) => `${entry.role === "interviewer" ? "INTERVIEWER" : "CANDIDATE"}: ${entry.text}`)
+        .join("\n\n");
+
+      const analysisPrompt = `You are an expert interview analyst. Analyze the following interview transcript and provide a detailed assessment.
+
+INTERVIEW TRANSCRIPT:
+${transcript}
+
+Please provide a comprehensive analysis in the following JSON format (respond ONLY with valid JSON, no additional text):
+{
+  "role": "Identified role/position being interviewed for",
+  "confidenceScore": <number 0-100>,
+  "contentScore": <number 0-100>,
+  "overallScore": <number 0-100>,
+  "strengths": [
+    "Strength point 1",
+    "Strength point 2",
+    "Strength point 3"
+  ],
+  "improvements": [
+    "Improvement area 1",
+    "Improvement area 2",
+    "Improvement area 3"
+  ],
+  "rejectionReasons": [
+    "Potential rejection reason 1",
+    "Potential rejection reason 2",
+    "Potential rejection reason 3"
+  ],
+  "performanceBreakdown": {
+    "technicalSkills": <number 0-100>,
+    "communication": <number 0-100>,
+    "problemSolving": <number 0-100>,
+    "confidence": <number 0-100>
+  },
+  "skillsAssessment": {
+    "technical": <number 0-100>,
+    "communication": <number 0-100>,
+    "leadership": <number 0-100>,
+    "problemSolving": <number 0-100>,
+    "adaptability": <number 0-100>,
+    "teamwork": <number 0-100>
+  }
+}
+
+Guidelines:
+- confidenceScore: Communication clarity, confidence, articulation (0-100)
+- contentScore: Relevance, depth, technical accuracy of answers (0-100)
+- overallScore: Average of confidence and content scores
+- strengths: 3-5 specific positive observations
+- improvements: 3-5 specific areas needing development
+- rejectionReasons: 3-5 potential reasons that could lead to rejection
+- performanceBreakdown: Detailed scores for key performance areas
+  * technicalSkills: Technical knowledge and expertise demonstrated
+  * communication: Clarity, articulation, and expression
+  * problemSolving: Analytical thinking and problem-solving approach
+  * confidence: Self-assurance and composure during interview
+- skillsAssessment: Comprehensive skills evaluation
+  * technical: Technical competency and knowledge
+  * communication: Verbal and non-verbal communication effectiveness
+  * leadership: Leadership potential and initiative
+  * problemSolving: Critical thinking and analytical abilities
+  * adaptability: Flexibility and adaptiveness to situations
+  * teamwork: Collaboration and team-oriented mindset
+- Ensure all scores are realistic numbers between 0-100
+- Base analysis strictly on the actual transcript content`;
+
+      const response = await groq.chat.completions.create({
+        model: "llama-3.3-70b-versatile",
+        messages: [
+          {
+            role: "user",
+            content: analysisPrompt,
+          },
+        ],
+        temperature: 0.3,
+        max_tokens: 2000,
+      });
+
+      const analysisText = response.choices[0]?.message?.content || "";
+      
+      // Parse JSON response
+      const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const analysis: AnalysisResult = JSON.parse(jsonMatch[0]);
+        setReportData(analysis);
+        toast.success("Interview analysis completed!");
+      } else {
+        throw new Error("Failed to parse analysis response");
+      }
+    } catch (error) {
+      console.error("Error analyzing interview:", error);
+      toast.error("Failed to analyze interview. Using default report.");
+      // Keep default mock data
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  // Chart data - derived from LLM analysis
   const performanceData = [
-    { category: 'Technical Skills', score: 85 },
-    { category: 'Communication', score: 78 },
-    { category: 'Problem Solving', score: 80 },
-    { category: 'Confidence', score: 75 }
+    { category: 'Technical Skills', score: reportData.performanceBreakdown.technicalSkills },
+    { category: 'Communication', score: reportData.performanceBreakdown.communication },
+    { category: 'Problem Solving', score: reportData.performanceBreakdown.problemSolving },
+    { category: 'Confidence', score: reportData.performanceBreakdown.confidence }
   ];
 
   const radarData = [
-    { skill: 'Technical', A: 85, fullMark: 100 },
-    { skill: 'Communication', A: 78, fullMark: 100 },
-    { skill: 'Leadership', A: 65, fullMark: 100 },
-    { skill: 'Problem Solving', A: 80, fullMark: 100 },
-    { skill: 'Adaptability', A: 70, fullMark: 100 },
-    { skill: 'Teamwork', A: 75, fullMark: 100 }
+    { skill: 'Technical', A: reportData.skillsAssessment.technical, fullMark: 100 },
+    { skill: 'Communication', A: reportData.skillsAssessment.communication, fullMark: 100 },
+    { skill: 'Leadership', A: reportData.skillsAssessment.leadership, fullMark: 100 },
+    { skill: 'Problem Solving', A: reportData.skillsAssessment.problemSolving, fullMark: 100 },
+    { skill: 'Adaptability', A: reportData.skillsAssessment.adaptability, fullMark: 100 },
+    { skill: 'Teamwork', A: reportData.skillsAssessment.teamwork, fullMark: 100 }
   ];
 
   return (
@@ -74,6 +244,23 @@ const InterviewReport = () => {
             </Button>
           </Link>
         </div>
+
+        {/* Analysis Loading State */}
+        {isAnalyzing && (
+          <Card className="mb-8 border-2 border-primary/50 bg-primary/5">
+            <CardContent className="py-8">
+              <div className="flex flex-col items-center gap-4">
+                <Loader2 className="w-12 h-12 text-primary animate-spin" />
+                <div className="text-center">
+                  <p className="text-lg font-semibold text-foreground">Analyzing Your Interview...</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Our AI is reviewing your responses and generating detailed feedback
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Score Cards */}
         <div className="grid md:grid-cols-3 gap-6 mb-8">
@@ -285,7 +472,7 @@ const InterviewReport = () => {
         </Card>
 
         {/* Potential Rejection Reasons */}
-        <Card className="border-l-4 border-l-destructive border border-border">
+        <Card className="border-l-4 border-l-destructive border border-border mb-6">
           <CardHeader>
             <div className="flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-destructive" />
@@ -303,6 +490,66 @@ const InterviewReport = () => {
             </ul>
           </CardContent>
         </Card>
+
+        {/* Interview Transcript */}
+        {conversation.length > 0 && (
+          <Card className="border-l-4 border-l-primary border border-border mb-6">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-primary" />
+                <CardTitle className="text-primary">Interview Transcript</CardTitle>
+              </div>
+              <CardDescription>
+                Complete record of your interview conversation
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="transcript" className="border-none">
+                  <AccordionTrigger className="hover:no-underline py-3">
+                    <span className="text-sm font-medium">
+                      View Full Transcript ({conversation.length} exchanges)
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-4 mt-2 max-h-96 overflow-y-auto pr-2">
+                      {conversation.map((entry, index) => (
+                        <div
+                          key={index}
+                          className={`p-4 rounded-lg ${
+                            entry.role === "interviewer"
+                              ? "bg-blue-50 dark:bg-blue-950/30 border-l-4 border-l-blue-500"
+                              : "bg-green-50 dark:bg-green-950/30 border-l-4 border-l-green-500"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 mb-2">
+                            <span
+                              className={`text-xs font-bold uppercase tracking-wide ${
+                                entry.role === "interviewer"
+                                  ? "text-blue-600 dark:text-blue-400"
+                                  : "text-green-600 dark:text-green-400"
+                              }`}
+                            >
+                              {entry.role === "interviewer" ? "🤖 AI Interviewer" : "👤 You"}
+                            </span>
+                            {entry.timestamp && (
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(entry.timestamp).toLocaleTimeString()}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-foreground leading-relaxed">
+                            {entry.text}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Next Steps */}
         <div className="mt-8 p-6 bg-gradient-hero rounded-lg border border-border">

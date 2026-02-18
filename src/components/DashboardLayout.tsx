@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { GraduationCap, LayoutDashboard, FileText, MessageSquare, LogOut, Menu, X } from "lucide-react";
+import { GraduationCap, LayoutDashboard, FileText, MessageSquare, Brain, LogOut, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
@@ -16,6 +16,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { path: "/resume-analysis", label: "Resume Analysis", icon: FileText },
     { path: "/interview", label: "Mock Interview", icon: MessageSquare },
+    { path: "/aptitude-test", label: "Aptitude Test", icon: Brain },
   ];
 
   const isActive = (path: string) => location.pathname === path;

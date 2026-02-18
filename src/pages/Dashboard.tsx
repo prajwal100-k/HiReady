@@ -1,14 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { FileUp, MessageSquare, ArrowRight, FileText, Mic, BarChart3 } from "lucide-react";
+import { FileUp, MessageSquare, ArrowRight, FileText, Mic, BarChart3, Brain } from "lucide-react";
 
 const Dashboard = () => {
   const [progress, setProgress] = useState<number>(0); // Can be updated based on user progress
   const [hasCompletedInterview, setHasCompletedInterview] = useState(false);
+  const [aptitudeScore, setAptitudeScore] = useState<{ score: number; total: number } | null>(null);
+
+  useEffect(() => {
+    // Load aptitude test score from session storage
+    const savedResult = sessionStorage.getItem("aptitudeTestResult");
+    if (savedResult) {
+      const result = JSON.parse(savedResult);
+      setAptitudeScore({ score: result.score, total: result.totalQuestions });
+    }
+  }, []);
 
   return (
     <DashboardLayout>
@@ -59,10 +69,10 @@ const Dashboard = () => {
         </Card>
 
         {/* Action Cards */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Resume Upload Card */}
-          <Card className="border border-border shadow-md hover:shadow-lg transition-shadow">
-            <CardHeader>
+          <Card className="border border-border shadow-md hover:shadow-lg transition-shadow flex flex-col">
+            <CardHeader className="flex-1">
               <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center mb-4">
                 <FileUp className="w-6 h-6 text-accent" />
               </div>
@@ -71,9 +81,9 @@ const Dashboard = () => {
                 Get started with AI-powered resume analysis
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Link to="/resume-analysis">
-                <Button className="bg-gradient-accent hover:opacity-90 transition-opacity">
+            <CardContent className="pt-0">
+              <Link to="/resume-analysis" className="block">
+                <Button className="w-full bg-gradient-accent hover:opacity-90 transition-opacity">
                   Upload Resume <ArrowRight className="ml-2 w-4 h-4" />
                 </Button>
               </Link>
@@ -81,8 +91,8 @@ const Dashboard = () => {
           </Card>
 
           {/* Interview Card */}
-          <Card className="border border-border shadow-md hover:shadow-lg transition-shadow">
-            <CardHeader>
+          <Card className="border border-border shadow-md hover:shadow-lg transition-shadow flex flex-col">
+            <CardHeader className="flex-1">
               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                 <MessageSquare className="w-6 h-6 text-primary" />
               </div>
@@ -91,18 +101,38 @@ const Dashboard = () => {
                 Practice with our autonomous AI interviewer
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Link to="/interview">
-                <Button className="bg-gradient-primary hover:opacity-90 transition-opacity">
+            <CardContent className="pt-0">
+              <Link to="/interview" className="block">
+                <Button className="w-full bg-gradient-primary hover:opacity-90 transition-opacity">
                   Start Interview <ArrowRight className="ml-2 w-4 h-4" />
                 </Button>
               </Link>
             </CardContent>
           </Card>
 
+          {/* Aptitude Test Card */}
+          <Card className="border border-border shadow-md hover:shadow-lg transition-shadow flex flex-col">
+            <CardHeader className="flex-1">
+              <div className="w-12 h-12 rounded-lg bg-warning/10 flex items-center justify-center mb-4">
+                <Brain className="w-6 h-6 text-warning" />
+              </div>
+              <CardTitle>Aptitude Test</CardTitle>
+              <CardDescription>
+                Test your problem-solving skills
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <Link to="/aptitude-test" className="block">
+                <Button className="w-full bg-gradient-primary hover:opacity-90 transition-opacity">
+                  Take Test <ArrowRight className="ml-2 w-4 h-4" />
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+
           {/* View Report Card */}
-          <Card className="border border-border shadow-md hover:shadow-lg transition-shadow">
-            <CardHeader>
+          <Card className="border border-border shadow-md hover:shadow-lg transition-shadow flex flex-col">
+            <CardHeader className="flex-1">
               <div className="w-12 h-12 rounded-lg bg-success/10 flex items-center justify-center mb-4">
                 <BarChart3 className="w-6 h-6 text-success" />
               </div>
@@ -111,10 +141,10 @@ const Dashboard = () => {
                 Review your interview performance and insights
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Link to="/interview-report">
+            <CardContent className="pt-0">
+              <Link to="/interview-report" className="block">
                 <Button 
-                  className="bg-gradient-accent hover:opacity-90 transition-opacity"
+                  className="w-full bg-gradient-accent hover:opacity-90 transition-opacity"
                   disabled={!hasCompletedInterview}
                 >
                   View Report <ArrowRight className="ml-2 w-4 h-4" />
@@ -130,7 +160,7 @@ const Dashboard = () => {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* ATS Score Card */}
           <Card className="border border-border">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -159,6 +189,26 @@ const Dashboard = () => {
               <div className="text-3xl font-bold text-foreground">{progress >= 75 ? "85%" : "0%"}</div>
               <p className="text-xs text-muted-foreground mt-1">
                 {progress >= 75 ? "Great performance!" : "Complete interview to see score"}
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Aptitude Test Score Card */}
+          <Card className="border border-border">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Aptitude Score</CardTitle>
+              <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center">
+                <Brain className="w-5 h-5 text-warning" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-foreground">
+                {aptitudeScore ? `${aptitudeScore.score}/${aptitudeScore.total}` : "0/10"}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {aptitudeScore 
+                  ? `${Math.round((aptitudeScore.score / aptitudeScore.total) * 100)}% - ${aptitudeScore.score >= 7 ? "Excellent!" : aptitudeScore.score >= 5 ? "Good job!" : "Keep practicing!"}` 
+                  : "Take test to see score"}
               </p>
             </CardContent>
           </Card>

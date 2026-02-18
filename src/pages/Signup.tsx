@@ -5,9 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GraduationCap, Mail, Lock, User } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Signup = () => {
   const navigate = useNavigate();
+  const { signup } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,6 +18,11 @@ const Signup = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!email || !password || !name) {
+      toast.error("Please fill in all fields");
+      return;
+    }
     
     if (password !== confirmPassword) {
       toast.error("Passwords do not match");
@@ -28,13 +35,14 @@ const Signup = () => {
     }
 
     setIsLoading(true);
-
-    // Placeholder for API call to /api/auth/signup
-    setTimeout(() => {
-      toast.success("Account created successfully!");
+    try {
+      await signup(email, password, name);
       navigate("/dashboard");
+    } catch (error) {
+      // Error toast is handled in AuthContext
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   const handleGoogleSignup = () => {

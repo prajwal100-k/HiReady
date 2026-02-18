@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AptitudeTest {
+  id             String   @id @default(cuid())
+  userId         String
+  answers        String
+  score          Int
+  totalQuestions Int      @default(10)
+  timeSpent      Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  User           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Interview {
+  id               String   @id @default(cuid())
+  userId           String
+  jobRole          String
+  experienceLevel  String?
+  duration         Int?
+  transcript       String?
+  overallScore     Float?
+  confidenceScore  Float?
+  contentScore     Float?
+  strengths        String?
+  improvements     String?
+  rejectionReasons String?
+  technicalSkills  Float?
+  communication    Float?
+  problemSolving   Float?
+  confidence       Float?
+  technical        Float?
+  leadership       Float?
+  adaptability     Float?
+  teamwork         Float?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  creativity       Float?
+  timeManagement   Float?
+  User             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Resume {
+  id           String   @id @default(cuid())
+  userId       String
+  fileName     String
+  fileUrl      String?
+  fileSize     Int?
+  atsScore     Float?
+  strengths    String?
+  improvements String?
+  keywords     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model User {
+  id           String         @id @default(cuid())
+  email        String         @unique
+  password     String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  avatarUrl    String?
+  bio          String?
+  country      String?
+  name         String?
+  phone        String?
+  role         String?
+  AptitudeTest AptitudeTest[]
+  Interview    Interview[]
+  Resume       Resume[]
+}
